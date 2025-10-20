@@ -1,13 +1,13 @@
 {
   "name": "guia-ao-dispor-server",
   "version": "1.0.0",
-  "description": "Servidor para o projeto Guia Ao Dispor.",
+  "description": "Back-end do projeto Guia Ao Dispor",
   "main": "servidor.js",
   "type": "module",
   "scripts": {
     "start": "node servidor.js",
     "dev": "nodemon servidor.js",
-    "build": "echo \"Server build complete - no additional build steps needed\""
+    "lint": "eslint . --fix"
   },
   "author": "Lucas e Rhuam",
   "license": "ISC",
@@ -23,12 +23,9 @@
     "sharp": "^0.34.4"
   },
   "devDependencies": {
-    "@eslint/js": "^9",
+    "nodemon": "^3.1.2",
     "eslint": "^9",
-    "globals": "^15.4.0",
-    "nodemon": "^3.1.2"
-  },
-  "engines": {
-    "node": "22.14.0"
+    "@eslint/js": "^9",
+    "globals": "^15.4.0"
   }
 }
