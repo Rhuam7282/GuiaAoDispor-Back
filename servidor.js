@@ -307,6 +307,34 @@ app.get('/api/profissionais', async (req, res) => {
   }
 });
 
+// GET - Buscar profissional por ID
+app.get('/api/profissionais/:id', async (req, res) => {
+  try {
+    console.log(`👨‍💼 Buscando profissional: ${req.params.id}`);
+    const profissional = await Profissional.findById(req.params.id)
+      .select('-senha')
+      .populate('localizacao');
+    
+    if (!profissional) {
+      return res.status(404).json({
+        status: 'erro',
+        message: 'Profissional não encontrado'
+      });
+    }
+
+    res.status(200).json({
+      status: 'sucesso',
+      data: profissional
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar profissional:', error);
+    res.status(500).json({
+      status: 'erro',
+      message: error.message
+    });
+  }
+});
+
 // ========== ROTAS DE AUTENTICAÇÃO (PÚBLICAS) ==========
 
 // Rota para validar email
