@@ -5,7 +5,12 @@ const HCurricularSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  desc: String,
+  desc: {
+    type: String,
+    maxlength: 100
+  },
+  dataInicio: String,
+  dataConclusao: String,
   profissional: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Profissional'
@@ -13,3 +18,4 @@ const HCurricularSchema = new mongoose.Schema({
 });
 
 export default mongoose.model('HCurricular', HCurricularSchema);
+

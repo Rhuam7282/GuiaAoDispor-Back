@@ -63,6 +63,46 @@ app.options("*", cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+// ========== CONFIGURAÇÃO DO MULTER PARA UPLOAD DE IMAGENS ==========
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const extensao = path.extname(file.originalname);
+    const nomeBase = path.basename(file.originalname, extensao);
+    const nomeSanitizado = nomeBase.replace(/[^a-zA-Z0-9]/g, '_');
+    const nomeArquivo = `${nomeSanitizado}_${timestamp}${extensao}`;
+    cb(null, nomeArquivo);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    const tiposPermitidos = /jpeg|jpg|png|webp|gif/;
+    const extname = tiposPermitidos.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = tiposPermitidos.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Apenas imagens são permitidas (JPEG, JPG, PNG, WebP, GIF)'));
+    }
+  }
+});
+
+// Servir arquivos estáticos da pasta uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Conexão com MongoDB
 const mongoURI =
   process.env.MONGO_URI || "mongodb://localhost:27017/guiaaodispor";
@@ -75,7 +115,7 @@ mongoose
     console.error("❌ Erro ao conectar com o MongoDB:", err);
   });
 
-// Middleware de logging
+// Middleware de logging APRIMORADO
 app.use((req, res, next) => {
   console.log(
     `🌐 ${req.method} ${req.path}`,
@@ -207,6 +247,34 @@ app.get("/api/profissionais", async (req, res) => {
     ];
 
     res.status(200).json(profissionaisMock);
+  }
+});
+
+// GET - Buscar profissional por ID
+app.get('/api/profissionais/:id', async (req, res) => {
+  try {
+    console.log(`👨‍💼 Buscando profissional: ${req.params.id}`);
+    const profissional = await Profissional.findById(req.params.id)
+      .select('-senha')
+      .populate('localizacao');
+    
+    if (!profissional) {
+      return res.status(404).json({
+        status: 'erro',
+        message: 'Profissional não encontrado'
+      });
+    }
+
+    res.status(200).json({
+      status: 'sucesso',
+      data: profissional
+    });
+  } catch (error) {
+    console.error('❌ Erro ao buscar profissional:', error);
+    res.status(500).json({
+      status: 'erro',
+      message: error.message
+    });
   }
 });
 
