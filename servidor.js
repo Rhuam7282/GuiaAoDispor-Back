@@ -28,12 +28,23 @@ const app = express();
 // Este middleware deve vir ANTES das rotas de API
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
+app.use((req, res, next) => {
+  console.log('🔍 Headers da requisição:', {
+    origin: req.headers.origin,
+    'user-agent': req.headers['user-agent'],
+    method: req.method,
+    path: req.path
+  });
+  next();
+});
+
 // ========== CONFIGURAÇÃO CORS APRIMORADA PARA REPOSITÓRIOS SEPARADOS ==========
 const allowedOrigins = [
   'http://localhost:5173', 
   'http://localhost:3000', 
   'https://guiaaodispor.onrender.com',
-  'https://seu-frontend.onrender.com' // Adicione a URL do seu frontend em produção
+  'https://guiaaodispor.vercel.app',
+  'https://guiaaodispor-back.onrender.com'
 ];
 
 app.use(cors({
@@ -41,11 +52,16 @@ app.use(cors({
     // Permitir requests sem origin (como mobile apps ou curl requests)
     if (!origin) return callback(null, true);
     
+    // Log para debug
+    console.log('🔍 Origem da requisição:', origin);
+    
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'A política CORS para este site não permite acesso a partir da origem especificada.';
       console.log('❌ Origem bloqueada pelo CORS:', origin);
+      console.log('📋 Origens permitidas:', allowedOrigins);
       return callback(new Error(msg), false);
     }
+    console.log('✅ Origem permitida:', origin);
     return callback(null, true);
   },
   credentials: true,
