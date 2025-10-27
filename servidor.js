@@ -6,6 +6,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import multer from 'multer';
+import fs from 'fs';
 
 // Configuração do dotenv
 const __filename = fileURLToPath(import.meta.url);
@@ -26,18 +28,75 @@ const app = express();
 // Este middleware deve vir ANTES das rotas de API
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
-// Configuração CORS melhorada
+// ========== CONFIGURAÇÃO CORS APRIMORADA PARA REPOSITÓRIOS SEPARADOS ==========
+const allowedOrigins = [
+  'http://localhost:5173', 
+  'http://localhost:3000', 
+  'https://guiaaodispor.onrender.com',
+  'https://seu-frontend.onrender.com' // Adicione a URL do seu frontend em produção
+];
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'https://guiaaodispor.onrender.com'],
+  origin: function (origin, callback) {
+    // Permitir requests sem origin (como mobile apps ou curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'A política CORS para este site não permite acesso a partir da origem especificada.';
+      console.log('❌ Origem bloqueada pelo CORS:', origin);
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept', 'x-auth-token']
 }));
 
 app.options('*', cors());
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// ========== CONFIGURAÇÃO DO MULTER PARA UPLOAD DE IMAGENS ==========
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const timestamp = Date.now();
+    const extensao = path.extname(file.originalname);
+    const nomeBase = path.basename(file.originalname, extensao);
+    const nomeSanitizado = nomeBase.replace(/[^a-zA-Z0-9]/g, '_');
+    const nomeArquivo = `${nomeSanitizado}_${timestamp}${extensao}`;
+    cb(null, nomeArquivo);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    const tiposPermitidos = /jpeg|jpg|png|webp|gif/;
+    const extname = tiposPermitidos.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = tiposPermitidos.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Apenas imagens são permitidas (JPEG, JPG, PNG, WebP, GIF)'));
+    }
+  }
+});
+
+// Servir arquivos estáticos da pasta uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Conexão com MongoDB
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/guiaaodispor';
@@ -49,9 +108,10 @@ mongoose.connect(mongoURI)
       console.error('❌ Erro ao conectar com o MongoDB:', err);
     });
 
-// Middleware de logging
+// Middleware de logging APRIMORADO
 app.use((req, res, next) => {
-  console.log(`🌐 ${req.method} ${req.path}`, req.body ? JSON.stringify(req.body).substring(0, 200) : '');
+  const timestamp = new Date().toISOString();
+  console.log(`🌐 [${timestamp}] ${req.method} ${req.path}`, req.body ? `Body: ${JSON.stringify(req.body).substring(0, 200)}` : '');
   next();
 });
 
@@ -60,25 +120,79 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Bem-vindo à API do Guia ao Dispor!',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Health check
+// Health check APRIMORADO
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
-    database: mongoose.connection.readyState === 1 ? 'Conectado' : 'Desconectado'
+    database: mongoose.connection.readyState === 1 ? 'Conectado' : 'Desconectado',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
   });
 });
 
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
-    database: mongoose.connection.readyState === 1 ? 'Conectado' : 'Desconectado'
+    database: mongoose.connection.readyState === 1 ? 'Conectado' : 'Desconectado',
+    timestamp: new Date().toISOString()
   });
 });
 
+// ========== ROTA DE UPLOAD DE IMAGENS ==========
+app.post('/api/upload/imagem', upload.single('imagem'), (req, res) => {
+  try {
+    console.log('📤 Recebendo upload de imagem...');
+
+    if (!req.file) {
+      return res.status(400).json({
+        status: 'erro',
+        message: 'Nenhuma imagem enviada'
+      });
+    }
+
+    const urlImagem = `/uploads/${req.file.filename}`;
+    
+    // Determinar a URL completa baseada no ambiente
+    let urlCompleta;
+    if (process.env.NODE_ENV === 'production') {
+      urlCompleta = `https://${req.get('host')}${urlImagem}`;
+    } else {
+      urlCompleta = `${req.protocol}://${req.get('host')}${urlImagem}`;
+    }
+
+    console.log('✅ Upload realizado com sucesso:', {
+      nome: req.file.filename,
+      tamanho: req.file.size,
+      url: urlCompleta
+    });
+
+    res.status(200).json({
+      status: 'sucesso',
+      data: {
+        url: urlCompleta,
+        urlRelativa: urlImagem,
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      },
+      message: 'Upload realizado com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro no upload:', error);
+    res.status(500).json({
+      status: 'erro',
+      message: 'Erro interno no servidor durante o upload'
+    });
+  }
+});
 
 // ========== ROTA PÚBLICA PARA PROFISSIONAIS ==========
 
@@ -544,6 +658,7 @@ const verificarToken = (req, res, next) => {
     '/api/usuarios',
     '/api/profissionais',
     '/api/localizacoes',
+    '/api/upload/imagem',
     '/health',
     '/api/health',
     '/'
@@ -551,6 +666,7 @@ const verificarToken = (req, res, next) => {
   
   const isPublicRoute = publicRoutes.some(route => {
     if (route === '/api/profissionais' && req.method === 'GET') return true;
+    if (route === '/api/upload/imagem' && req.method === 'POST') return true;
     if (req.path.startsWith(route) && (req.method === 'POST' || req.method === 'GET')) {
       return true;
     }
@@ -1150,4 +1266,5 @@ const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor rodando na porta http://localhost:${PORT}`);
     console.log(`🌐 Ambiente: ${process.env.NODE_ENV || 'desenvolvimento'}`);
+    console.log(`🔗 Origens permitidas: ${allowedOrigins.join(', ')}`);
 });

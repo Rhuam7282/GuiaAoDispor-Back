@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node servidor.js",
     "dev": "nodemon servidor.js",
-    "lint": "eslint . --fix"
+    "lint": "eslint . --fix",
+    "tree": "powershell \"Get-ChildItem -Recurse -Path . | Where-Object { $_.FullName -notlike '*node_modules*' } | ForEach-Object { $_.FullName.Replace($PWD, '.') }\""
   },
   "author": "Lucas e Rhuam",
   "license": "ISC",
@@ -20,12 +21,13 @@
     "mongodb": "^6.18.0",
     "mongoose": "^8.19.1",
     "multer": "^2.0.2",
-    "sharp": "^0.34.4"
+    "sharp": "^0.34.4",
+    "tree-node-cli": "^1.6.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.2",
-    "eslint": "^9",
     "@eslint/js": "^9",
-    "globals": "^15.4.0"
+    "eslint": "^9",
+    "globals": "^15.4.0",
+    "nodemon": "^3.1.2"
   }
 }
