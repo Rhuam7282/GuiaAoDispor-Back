@@ -1,9 +1,12 @@
 import mongoose from 'mongoose';
 
 const HCurricularSchema = new mongoose.Schema({
+  nome: {
+    type: String,
+    required: true
+  },
   desc: {
     type: String,
-    required: true,
     maxlength: 100
   },
   dataInicio: String,
@@ -15,3 +18,4 @@ const HCurricularSchema = new mongoose.Schema({
 });
 
 export default mongoose.model('HCurricular', HCurricularSchema);
+
