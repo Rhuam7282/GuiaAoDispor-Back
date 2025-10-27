@@ -1,11 +1,13 @@
 import mongoose from 'mongoose';
 
 const HCurricularSchema = new mongoose.Schema({
-  nome: {
+  desc: {
     type: String,
-    required: true
+    required: true,
+    maxlength: 100
   },
-  desc: String,
+  dataInicio: String,
+  dataConclusao: String,
   profissional: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Profissional'
