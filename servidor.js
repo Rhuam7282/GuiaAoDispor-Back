@@ -1,3 +1,4 @@
+// @ts-nocheck
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -6,6 +7,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import multer from "multer";
+import fs from "fs";
 
 // Configuração do dotenv
 const __filename = fileURLToPath(import.meta.url);
