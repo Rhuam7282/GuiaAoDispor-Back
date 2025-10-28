@@ -41,6 +41,8 @@ app.use(
         const allowedOrigins = [
           "https://guiaaodispor.vercel.app",
           "https://guiaaodispor.onrender.com",
+          "http://localhost:5173",
+          "http://localhost:10000",
         ];
         if (allowedOrigins.indexOf(origin) !== -1) {
           callback(null, true);
