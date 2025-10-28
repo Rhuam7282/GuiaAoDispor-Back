@@ -41,6 +41,7 @@ app.use(
         const allowedOrigins = [
           "https://guiaaodispor.vercel.app",
           "https://guiaaodispor.onrender.com",
+          "http://localhost:5173/",
         ];
         if (allowedOrigins.indexOf(origin) !== -1) {
           callback(null, true);
@@ -288,23 +289,23 @@ app.get("/api/profissionais/:id", async (req, res) => {
 // ========== ROTAS DE AUTENTICAÇÃO (PÚBLICAS) ==========
 
 // Rota para validar email
-app.post("/api/auth/validar-email", async (req, res) => {
+app.post('/api/auth/validar-email', async (req, res) => {
   try {
-    console.log("📧 Validando email:", req.body.email);
+    console.log('📧 Rota validar-email chamada com:', req.body.email);
     const { email } = req.body;
-
+    
     if (!email) {
-      return res.status(400).json({
-        status: "erro",
-        message: "Email é obrigatório",
+      return res.status(400).json({ 
+        status: 'erro', 
+        message: 'Email é obrigatório' 
       });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        status: "erro",
-        message: "Formato de email inválido",
+      return res.status(400).json({ 
+        status: 'erro', 
+        message: 'Formato de email inválido' 
       });
     }
 
@@ -312,23 +313,23 @@ app.post("/api/auth/validar-email", async (req, res) => {
     const profissionalExistente = await Profissional.findOne({ email });
 
     if (usuarioExistente || profissionalExistente) {
-      return res.status(200).json({
-        status: "sucesso",
+      return res.status(200).json({ 
+        status: 'sucesso', 
         valido: false,
-        message: "Email já está em uso",
+        message: 'Email já está em uso' 
       });
     }
 
-    res.status(200).json({
-      status: "sucesso",
+    res.status(200).json({ 
+      status: 'sucesso', 
       valido: true,
-      message: "Email disponível",
+      message: 'Email disponível' 
     });
   } catch (error) {
-    console.error("❌ Erro ao validar email:", error);
-    res.status(500).json({
-      status: "erro",
-      message: error.message,
+    console.error('❌ Erro ao validar email:', error);
+    res.status(500).json({ 
+      status: 'erro', 
+      message: error.message 
     });
   }
 });
