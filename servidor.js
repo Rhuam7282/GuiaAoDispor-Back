@@ -30,21 +30,38 @@ const app = express();
 app.use(express.static(path.join(__dirname, "../client/dist")));
 
 // Configuração CORS melhorada
-app.use(cors({
-  origin: [
-    'http://localhost:5173', 
-    'http://localhost:3000', 
-    'https://guiaaodispor.onrender.com',
-    'https://guiaaodispor.vercel.app',
-    'http://192.168.0.182:5173', // SEU IP LOCAL
-    'https://guiaaodispor-back.onrender.com'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept']
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Permite todas as origens em desenvolvimento
+      if (!origin || process.env.NODE_ENV !== "production") {
+        callback(null, true);
+      } else {
+        // Em produção, permite apenas origens específicas
+        const allowedOrigins = [
+          "https://guiaaodispor.vercel.app",
+          "https://guiaaodispor.onrender.com",
+        ];
+        if (allowedOrigins.indexOf(origin) !== -1) {
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Origin",
+      "X-Requested-With",
+      "Accept",
+    ],
+  })
+);
 
-app.options('*', cors());
+app.options("*", cors());
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
