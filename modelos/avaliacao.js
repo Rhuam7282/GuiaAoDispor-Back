@@ -8,16 +8,34 @@ const AvaliacaoSchema = new mongoose.Schema({
   desc: String,
   nota: {
     type: Number,
-    required: true
+    required: true,
+    min: 1,
+    max: 5
   },
   usuario: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Usuario'
+    ref: 'Usuario',
+    required: true
   },
   profissional: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Profissional'
-  }
+    ref: 'Profissional',
+    required: true
+  },
+  trabalhoRealizado: {
+    type: String,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['pendente', 'confirmada', 'recusada'],
+    default: 'pendente'
+  },
+  dataSolicitacao: {
+    type: Date,
+    default: Date.now
+  },
+  dataConfirmacao: Date
 });
 
 export default mongoose.model('Avaliacao', AvaliacaoSchema);

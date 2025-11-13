@@ -19,7 +19,7 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
 import Localizacao from "./modelos/localizacao.js";
 import Profissional from "./modelos/profissional.js";
 import Usuario from "./modelos/usuario.js";
-import Avaliacao from "./modelos/avaliacao.js"; //ainda não usado
+import Avaliacao from "./modelos/avaliacao.js";
 import HCurricular from "./modelos/histcurricular.js";
 import HProfissional from "./modelos/histprofissional.js";
 
@@ -1248,6 +1248,222 @@ app.delete("/api/hprofissionais/:id", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Erro ao deletar histórico profissional:", error);
+    res.status(500).json({
+      status: "erro",
+      message: error.message,
+    });
+  }
+});
+
+// ========== ROTAS PARA AVALIAÇÕES ==========
+
+// GET - Buscar todas as avaliações de um profissional
+app.get("/api/avaliacoes/profissional/:profissionalId", async (req, res) => {
+  try {
+    console.log(`📊 Buscando avaliações do profissional: ${req.params.profissionalId}`);
+    
+    const avaliacoes = await Avaliacao.find({ 
+      profissional: req.params.profissionalId,
+      status: 'confirmada'
+    })
+    .populate('usuario', 'nome foto')
+    .sort({ dataConfirmacao: -1 });
+
+    res.status(200).json({
+      status: "sucesso",
+      data: avaliacoes,
+      total: avaliacoes.length,
+    });
+  } catch (error) {
+    console.error("❌ Erro ao buscar avaliações:", error);
+    res.status(500).json({
+      status: "erro",
+      message: error.message,
+    });
+  }
+});
+
+// GET - Buscar avaliações pendentes de um usuário
+app.get("/api/avaliacoes/pendentes/:usuarioId", async (req, res) => {
+  try {
+    console.log(`⏳ Buscando avaliações pendentes do usuário: ${req.params.usuarioId}`);
+    
+    const avaliacoes = await Avaliacao.find({ 
+      usuario: req.params.usuarioId,
+      status: 'pendente'
+    }).populate('profissional', 'nome foto');
+
+    res.status(200).json({
+      status: "sucesso",
+      data: avaliacoes,
+      total: avaliacoes.length,
+    });
+  } catch (error) {
+    console.error("❌ Erro ao buscar avaliações pendentes:", error);
+    res.status(500).json({
+      status: "erro",
+      message: error.message,
+    });
+  }
+});
+
+// POST - Criar nova solicitação de avaliação
+app.post("/api/avaliacoes/solicitar", async (req, res) => {
+  try {
+    console.log("📝 Criando nova solicitação de avaliação");
+    
+    const { profissionalId, usuarioNome, trabalhoRealizado, desc } = req.body;
+
+    if (!profissionalId || !usuarioNome || !trabalhoRealizado) {
+      return res.status(400).json({
+        status: "erro",
+        message: "Profissional, nome do usuário e descrição do trabalho são obrigatórios",
+      });
+    }
+
+    // Buscar usuário pelo nome
+    const usuario = await Usuario.findOne({ nome: usuarioNome });
+    if (!usuario) {
+      return res.status(404).json({
+        status: "erro",
+        message: "Usuário não encontrado",
+      });
+    }
+
+    const novaAvaliacao = await Avaliacao.create({
+      nome: `Avaliação para ${usuarioNome}`,
+      desc: desc || "",
+      nota: 0,
+      usuario: usuario._id,
+      profissional: profissionalId,
+      trabalhoRealizado: trabalhoRealizado,
+      status: 'pendente'
+    });
+
+    await novaAvaliacao.populate('usuario', 'nome foto');
+
+    console.log(`✅ Solicitação de avaliação criada: ${novaAvaliacao._id}`);
+
+    res.status(201).json({
+      status: "sucesso",
+      data: novaAvaliacao,
+      message: "Solicitação de avaliação enviada com sucesso",
+    });
+  } catch (error) {
+    console.error("❌ Erro ao criar solicitação de avaliação:", error);
+    res.status(400).json({
+      status: "erro",
+      message: error.message,
+    });
+  }
+});
+
+// PUT - Confirmar avaliação
+app.put("/api/avaliacoes/confirmar/:id", async (req, res) => {
+  try {
+    console.log(`✅ Confirmando avaliação: ${req.params.id}`);
+    
+    const { nota, desc } = req.body;
+
+    if (!nota || nota < 1 || nota > 5) {
+      return res.status(400).json({
+        status: "erro",
+        message: "Nota deve ser entre 1 e 5",
+      });
+    }
+
+    const avaliacaoAtualizada = await Avaliacao.findByIdAndUpdate(
+      req.params.id,
+      {
+        nota,
+        desc: desc || "",
+        status: 'confirmada',
+        dataConfirmacao: new Date()
+      },
+      { new: true, runValidators: true }
+    ).populate('usuario', 'nome foto');
+
+    if (!avaliacaoAtualizada) {
+      return res.status(404).json({
+        status: "erro",
+        message: "Avaliação não encontrada",
+      });
+    }
+
+    console.log(`✅ Avaliação confirmada: ${avaliacaoAtualizada._id}`);
+
+    res.status(200).json({
+      status: "sucesso",
+      data: avaliacaoAtualizada,
+      message: "Avaliação confirmada com sucesso",
+    });
+  } catch (error) {
+    console.error("❌ Erro ao confirmar avaliação:", error);
+    res.status(400).json({
+      status: "erro",
+      message: error.message,
+    });
+  }
+});
+
+// PUT - Recusar avaliação
+app.put("/api/avaliacoes/recusar/:id", async (req, res) => {
+  try {
+    console.log(`❌ Recusando avaliação: ${req.params.id}`);
+    
+    const avaliacaoAtualizada = await Avaliacao.findByIdAndUpdate(
+      req.params.id,
+      {
+        status: 'recusada',
+        dataConfirmacao: new Date()
+      },
+      { new: true }
+    );
+
+    if (!avaliacaoAtualizada) {
+      return res.status(404).json({
+        status: "erro",
+        message: "Avaliação não encontrada",
+      });
+    }
+
+    console.log(`✅ Avaliação recusada: ${avaliacaoAtualizada._id}`);
+
+    res.status(200).json({
+      status: "sucesso",
+      message: "Avaliação recusada com sucesso",
+    });
+  } catch (error) {
+    console.error("❌ Erro ao recusar avaliação:", error);
+    res.status(400).json({
+      status: "erro",
+      message: error.message,
+    });
+  }
+});
+
+// DELETE - Deletar avaliação
+app.delete("/api/avaliacoes/:id", async (req, res) => {
+  try {
+    console.log(`🗑️ Deletando avaliação: ${req.params.id}`);
+    
+    const avaliacaoDeletada = await Avaliacao.findByIdAndDelete(req.params.id);
+
+    if (!avaliacaoDeletada) {
+      return res.status(404).json({
+        status: "erro",
+        message: "Avaliação não encontrada",
+      });
+    }
+
+    console.log(`✅ Avaliação deletada: ${avaliacaoDeletada._id}`);
+
+    res.status(200).json({
+      status: "sucesso",
+      message: "Avaliação deletada com sucesso",
+    });
+  } catch (error) {
+    console.error("❌ Erro ao deletar avaliação:", error);
     res.status(500).json({
       status: "erro",
       message: error.message,
