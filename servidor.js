@@ -1333,7 +1333,7 @@ app.post("/api/avaliacoes/solicitar", async (req, res) => {
     const novaAvaliacao = await Avaliacao.create({
       nome: `Avaliação para ${usuarioNome}`,
       desc: desc || "",
-      nota: 0,
+      nota: 0, // Nota inicial 0 para avaliações pendentes
       usuario: usuario._id,
       profissional: profissionalId,
       trabalhoRealizado: trabalhoRealizado,
@@ -1341,6 +1341,7 @@ app.post("/api/avaliacoes/solicitar", async (req, res) => {
     });
 
     await novaAvaliacao.populate('usuario', 'nome foto');
+    await novaAvaliacao.populate('profissional', 'nome foto');
 
     console.log(`✅ Solicitação de avaliação criada: ${novaAvaliacao._id}`);
 
@@ -1365,6 +1366,7 @@ app.put("/api/avaliacoes/confirmar/:id", async (req, res) => {
     
     const { nota, desc } = req.body;
 
+    // Validação da nota - agora permitindo 0 para pendentes, mas na confirmação deve ser entre 1-5
     if (!nota || nota < 1 || nota > 5) {
       return res.status(400).json({
         status: "erro",

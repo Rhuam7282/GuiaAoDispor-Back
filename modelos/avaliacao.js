@@ -8,9 +8,9 @@ const AvaliacaoSchema = new mongoose.Schema({
   desc: String,
   nota: {
     type: Number,
-    required: true,
-    min: 1,
-    max: 5
+    min: 0,
+    max: 5,
+    default: 0
   },
   usuario: {
     type: mongoose.Schema.Types.ObjectId,
